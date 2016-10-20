@@ -1,0 +1,17 @@
+{
+  "name": "koebot",
+  "version": "1.0.0",
+  "description": "A v9 Discord.JS music bot",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "discord.js": "github:hydrabolt/discord.js#master",
+    "request": "^2.75.0",
+    "ytdl-core": "github:fent/node-ytdl-core#master"
+  },
+  "author": "selcher",
+  "license": "MIT"
+}
