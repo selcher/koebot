@@ -6,7 +6,7 @@ const Request = require('request');
  * Search for a gif using GiphyApi
  */
 module.exports = {
-    search: (input) => {
+    gif: (input) => {
 
         return new Promise((resolve, reject) => {
 
@@ -30,7 +30,7 @@ module.exports = {
             });
         });
     },
-    random: (input) => {
+    gifr: (input) => {
 
         return new Promise((resolve, reject) => {
 
