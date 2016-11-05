@@ -1,208 +1,379 @@
 'use strict';
 
+// Modules
 const tokens = require('./../tokens.json');
-const yt = require('ytdl-core');
+const prefix = tokens.prefix;
 
-let queue = {};
+const yt = require('ytdl-core');
+const ytdl = require('youtube-dl');
+
+// Definitions
+const msgDeleteDelay = 15000;
+
+let wrap = (content) => {
+    return '```' + content + '```';
+};
 
 let msgFormats = {
-	addSongFirst: `Add some songs to the queue first with ${tokens.prefix}add`,
-	emptyQueue: 'Queue is empty',
-	alreadyPlaying: 'Already Playing',
-	playing: (song) => `Playing: **${song.title}** as requested by: **${song.requester}**`
+    addSongFirst: wrap(`Add some songs to the queue first with ${prefix}add`),
+    missingAddParam: wrap(`Add keywords, a url, or youtube video id after ${prefix}add`),
+    emptyQueue: wrap('Queue is empty'),
+    addedSong: (song) => wrap(`Added ${song.title} to the queue\n`) +
+        song.thumbnail,
+    alreadyPlaying: wrap('Already Playing'),
+    playError: 'Oops, an error occured. Resuming in 5s...',
+    playing: (song) => wrap(
+            `Now Playing: ${song.title} as requested by: @${song.requester}`
+        ),
+    paused: (song) => wrap(
+            `Paused: ${song.title}`
+        ),
+    resumed: (song) => wrap(
+            `Playing: ${song.title}`
+        ),
+    skipped: (song) => wrap(
+            `Skipped: ${song.title}`
+        ),
+    volume: (vol) => wrap(
+            `Volume: ${vol}%`
+        ),
+    noVoiceChannel: wrap('I couldn\'t connect to your voice channel...'),
+    searchVideoError: wrap('Oops, an error occured while searching the video'),
+    invalidVideoLink: (err) => wrap('Invalid YouTube Link: ' + err)
 };
 
+let queue = {};
+let getQueueId = (msg) => {
+    return msg.guild.id;
+};
+let getVoiceConnection = (msg) => {
+    return msg.guild.voiceConnection;
+};
+let getVoiceChannel = (msg) => {
+    return msg.member.voiceChannel;
+};
+
+let log = () => {
+    console.log.apply(console, arguments);
+};
+let sendMessage = (msg, content, dontDelete)  => {
+    return new Promise((resolve, reject) => {
+        msg.channel.sendMessage(
+            content
+        ).then(
+            message => {
+                !dontDelete && message.delete(msgDeleteDelay);
+                resolve(message);
+            }
+        ).catch(
+            err => {
+                log(
+                    'Error sending msg:',
+                    content,
+                    '\n',
+                    err
+                );
+                reject(err);
+            }
+        );
+    });
+};
+
+// API
 const commands = {
-	'play': (msg) => {
-		let currentQueue = queue[msg.guild.id];
+    'play': (msg) => {
 
-		if (currentQueue === undefined) {
-			return msg.channel.sendMessage(msgFormats.addSongFirst);
-		}
+        const queueId = getQueueId(msg);
+        let currentQueue = queue[queueId];
 
-		if (!msg.guild.voiceConnection) {
-			return commands.join(msg).then(() => commands.play(msg));
-		}
+        if (currentQueue === undefined) {
+            return sendMessage(msg, msgFormats.addSongFirst);
+        }
 
-		if (currentQueue.playing) {
-			return msg.channel.sendMessage(msgFormats.alreadyPlaying);
-		}
+        if (currentQueue.playing) {
+            return sendMessage(msg, msgFormats.alreadyPlaying);
+        }
 
-		let dispatcher;
-		queue[msg.guild.id].playing = true;
+        let voiceConnection = getVoiceConnection(msg);
 
-		console.log(queue);
+        if (!voiceConnection) {
+            return commands.join(msg).then(
+                connection => commands.play(msg)
+            ).catch(
+                err => {
+                    log(
+                        'Error on voiceConnection:\n',
+                        err
+                    );
+                }
+            );
+        }
 
-		(function play(song) {
+        (function play(song) {
 
-			if (song === undefined) {
-				return msg.channel.sendMessage(msgFormats.emptyQueue).then(() => {
-					queue[msg.guild.id].playing = false;
-					msg.member.voiceChannel.leave();
-				});
-			}
+            if (song === undefined) {
 
-			console.log(song);
-			msg.channel.sendMessage(msgFormats.playing(song));
+                sendMessage(msg, msgFormats.emptyQueue).then(
+                    message => {
+                        getVoiceChannel(msg).leave();
+                    }
+                );
 
-			dispatcher = msg.guild.voiceConnection.playStream(
-				yt(song.url, { quality: 'lowest', audioonly: true }),
-				{ passes : tokens.passes }
-			);
+            } else {
 
-			let collector = msg.channel.createCollector(m => m);
-			collector.on('message', m => {
-				if (m.content.startsWith(tokens.prefix + 'pause')) {
-					msg.channel.sendMessage('paused').then(
-						() => {dispatcher.pause();}
-					);
-				} else if (m.content.startsWith(tokens.prefix + 'resume')) {
-					msg.channel.sendMessage('resumed').then(
-						() => {dispatcher.resume();}
-					);
-				} else if (m.content.startsWith(tokens.prefix + 'skip')) {
-					msg.channel.sendMessage('skipped').then(
-						() => {dispatcher.end();}
-					);
-				} else if (m.content.startsWith('volume+')) {
-					if (Math.round(dispatcher.volume*50) >= 100) {
-						return msg.channel.sendMessage(
-							`Volume: ${Math.round(dispatcher.volume*50)}%`
-						);
-					}
+                queue[queueId].playing = true;
 
-					dispatcher.setVolume(
-						Math.min(
-							(dispatcher.volume*50 + (2*(m.content.split('+').length-1))) / 50,
-							2
-						)
-					);
+                sendMessage(msg, msgFormats.playing(song));
 
-					msg.channel.sendMessage(`Volume: ${Math.round(dispatcher.volume*50)}%`);
-				} else if (m.content.startsWith('volume-')) {
-					if (Math.round(dispatcher.volume*50) <= 0) {
-						return msg.channel.sendMessage(
-							`Volume: ${Math.round(dispatcher.volume*50)}%`
-						);
-					}
+                let dispatcher = voiceConnection.playStream(
+                    yt(song.url, {quality: 'lowest', audioonly: true}),
+                    {passes: tokens.passes}
+                );
 
-					dispatcher.setVolume(
-						Math.max(
-							(dispatcher.volume*50 - (2*(m.content.split('-').length-1))) / 50,
-							0
-						)
-					);
+                let collector = msg.channel.createCollector(m => m);
 
-					msg.channel.sendMessage(`Volume: ${Math.round(dispatcher.volume*50)}%`);
-				} else if (m.content.startsWith(tokens.prefix + 'time')) {
-					msg.channel.sendMessage(
-						`time: ${Math.floor(dispatcher.time / 60000)}:${Math.floor((dispatcher.time % 60000)/1000) <10 ? '0'+Math.floor((dispatcher.time % 60000)/1000) : Math.floor((dispatcher.time % 60000)/1000)}`
-					);
-				}
-			});
+                collector.on('message', m => {
+                    if (m.content.startsWith(prefix + 'pause')) {
+                        sendMessage(msg, msgFormats.paused(song)).then(
+                            message => dispatcher.pause()
+                        );
+                    } else if (m.content.startsWith(prefix + 'resume')) {
+                        sendMessage(msg, msgFormats.resumed(song)).then(
+                            message => dispatcher.resume()
+                        );
+                    } else if (m.content.startsWith(prefix + 'skip')) {
+                        sendMessage(msg, msgFormats.skipped(song)).then(
+                            message => dispatcher.end()
+                        );
+                    } else if (m.content.startsWith('volume+')) {
+                        const volume = Math.round(dispatcher.volume * 50);
 
-			dispatcher.on('end', () => {
-				collector.stop();
-				queue[msg.guild.id].songs.shift();
-				play(queue[msg.guild.id].songs[0]);
-			});
+                        if (volume < 100) {
 
-			dispatcher.on('error', (err) => {
-				console.log(err);
+                            dispatcher.setVolume(
+                                Math.min(
+                                    (dispatcher.volume * 50 + (2 * (m.content.split('+').length - 1))) / 50,
+                                    2
+                                )
+                            );
 
-				return msg.channel.sendMessage('error: ' + err).then(() => {
-					collector.stop();
-					queue[msg.guild.id].songs.shift();
-					play(queue[msg.guild.id].songs[0]);
-				});
-			});
-		})(currentQueue.songs[0]);
-	},
-	'join': (msg) => {
-		return new Promise((resolve, reject) => {
-			const voiceChannel = msg.member.voiceChannel;
+                        }
 
-			if (!voiceChannel || voiceChannel.type !== 'voice') {
-				return msg.reply('I couldn\'t connect to your voice channel...');
-			}
+                        sendMessage(msg, msgFormats.volume(volume));
+                    } else if (m.content.startsWith('volume-')) {
+                        const volume = Math.round(dispatcher.volume * 50);
 
-			voiceChannel.join().then(
-				connection => resolve(connection)
-			).catch(err => reject(err));
-		});
-	},
-	'add': (msg) => {
-		let url = msg.content.split(' ')[1];
+                        if (volume > 0) {
 
-		if (url == '' || url === undefined) {
-			return msg.channel.sendMessage(`You must add a url, or youtube video id after ${tokens.prefix}add`);
-		}
+                            dispatcher.setVolume(
+                                Math.max(
+                                    (dispatcher.volume * 50 - (2 * (m.content.split('-').length - 1))) / 50,
+                                    0
+                                )
+                            );
 
-		yt.getInfo(url, (err, info) => {
-			if (err) {
-				return msg.channel.sendMessage('Invalid YouTube Link: ' + err);
-			}
+                        }
 
-			if (!queue.hasOwnProperty(msg.guild.id)) {
-				queue[msg.guild.id] = {};
-				queue[msg.guild.id].playing = false;
-				queue[msg.guild.id].songs = [];
-			}
+                        sendMessage(msg, msgFormats.volume(volume));
+                    } else if (m.content.startsWith(prefix + 'time')) {
+                        let minutes = Math.floor(dispatcher.time / 60000);
+                        let seconds = Math.floor((dispatcher.time % 60000) / 1000);
 
-			queue[msg.guild.id].songs.push(
-				{
-					url: url,
-					title: info.title,
-					requester: msg.author.username
-				}
-			);
+                        sendMessage(msg, `time: ${minutes}:${seconds < 10 ? '0' + seconds : seconds}`);
+                    }
+                });
 
-			msg.channel.sendMessage(`added **${info.title}** to the queue`);
-		});
-	},
-	'queue': (msg) => {
-		if (queue[msg.guild.id] === undefined) {
-			return msg.channel.sendMessage(
-				`Add some songs to the queue first with ${tokens.prefix}add`
-			);
-		}
+                dispatcher.on('end', () => {
+                    collector.stop();
+                    queue[queueId].songs.shift();
+                    play(queue[queueId].songs[0]);
+                });
 
-		let tosend = [];
+                dispatcher.on('error', (err) => {
+                    sendMessage(
+                        msg,
+                        msgFormats.playError
+                    ).then(message => {
+                        dispatcher.pause();
+                        setTimeout(() => {
+                            dispatcher.resume();
+                        }, msgDeleteDelay);
+                    });
+                });
 
-		queue[msg.guild.id].songs.forEach((song, i) => {
-			tosend.push(`${i+1}. ${song.title} - Requested by: ${song.requester}`);
-		});
+            }
 
-		msg.channel.sendMessage(
-			`__**${msg.guild.name}'s Music Queue:**__ Currently **${tosend.length}** songs queued ${(tosend.length > 15 ? '*[Only next 15 shown]*' : '')}\n\`\`\`${tosend.slice(0,15).join('\n')}\`\`\``
-		);
-	},
-	'help': (msg) => {
-		let tosend = [
-			'```xl',
-			tokens.prefix + 'join : "Join Voice channel of msg sender"',
-			tokens.prefix + 'add : "Add a valid youtube link to the queue"',
-			tokens.prefix + 'queue : "Shows the current queue, up to 15 songs shown."',
-			tokens.prefix + 'play : "Play the music queue if already joined to a voice channel"',
-			'',
-			'the following commands only function while the play command is running:'.toUpperCase(),
-			tokens.prefix + 'pause : "pauses the music"',
-			tokens.prefix + 'resume : "resumes the music"',
-			tokens.prefix + 'skip : "skips the playing song"',
-			tokens.prefix + 'time : "Shows the playtime of the song."',
-			'volume+(+++) : "increases volume by 2%/+"',
-			'volume-(---) : "decreases volume by 2%/-"',
-			'```'
-		];
+        })(currentQueue.songs[0]);
+    },
+    'join': (msg) => {
 
-		msg.channel.sendMessage(tosend.join('\n'));
-	},
-	'reboot': (msg) => {
-		if (msg.author.id == tokens.adminID) {
-			//Requires a node module like Forever to work.
-			process.exit();
-		}
-	}
+        return new Promise((resolve, reject) => {
+            const voiceChannel = getVoiceChannel(msg);
+
+            if (!voiceChannel || voiceChannel.type !== 'voice') {
+
+                msg.reply(msgFormats.noVoiceChannel);
+                reject('No voice channel found');
+
+            } else if (voiceChannel.connection) {
+
+                resolve(voiceChannel.connection);
+
+            } else {
+
+                voiceChannel.join().then(
+                    connection => resolve(connection)
+                ).catch(
+                    err => reject(err)
+                );
+
+            }
+        });
+    },
+    'add': (msg, cmdArgs) => {
+
+        let url = cmdArgs;
+
+        if (url == '' || url === undefined) {
+
+            sendMessage(msg, msgFormats.missingAddParam);
+
+        } else if (!url.toLowerCase().startsWith('http')) {
+
+            // If the suffix doesn't start with 'http',
+            // assume it's a search.
+            url = 'gvsearch1:' + url;
+
+            sendMessage(
+                msg,
+                wrap('Searching ' + cmdArgs + ' ...'),
+                true
+            ).then(
+                message => {
+
+                    ytdl.getInfo(url, (err, info) => {
+                        if (err) {
+
+                            message.edit(msgFormats.searchVideoError);
+                            message.delete(5000);
+
+                        } else {
+
+                            const queueId = getQueueId(msg);
+
+                            if (!queue.hasOwnProperty(queueId)) {
+                                queue[queueId] = {};
+                                queue[queueId].playing = false;
+                                queue[queueId].songs = [];
+                            }
+
+                            queue[queueId].songs.push(
+                                {
+                                    url: 'https://www.youtube.com/watch?v=' + info.id,
+                                    title: info.title,
+                                    requester: msg.author.username
+                                }
+                            );
+
+                            message.edit(msgFormats.addedSong(info));
+                            message.delete(5000);
+                        }
+                    });
+                }
+            );
+
+        } else if (url) {
+
+            sendMessage(
+                msg,
+                wrap('Getting video info...'),
+                true
+            ).then(
+                message => {
+
+                    yt.getInfo(url, (err, info) => {
+                        if (err) {
+
+                            message.edit(msgFormats.invalidVideoLink(err));
+                            message.delete(5000);
+
+                        } else {
+
+                            const queueId = getQueueId(msg);
+
+                            if (!queue.hasOwnProperty(queueId)) {
+                                queue[queueId] = {};
+                                queue[queueId].playing = false;
+                                queue[queueId].songs = [];
+                            }
+
+                            queue[queueId].songs.push(
+                                {
+                                    url: url,
+                                    title: info.title,
+                                    requester: msg.author.username
+                                }
+                            );
+
+                            sendMessage(msg, msgFormats.addedSong(info));
+                        }
+                    });
+
+                }
+            );
+        }
+    },
+    'queue': (msg) => {
+
+        const queueId = getQueueId(msg);
+
+        if (queue[queueId] === undefined || queue[queueId].songs.length === 0) {
+
+            sendMessage(msg, msgFormats.addSongFirst);
+
+        } else {
+
+            let tosend = [];
+
+            queue[queueId].songs.forEach((song, i) => {
+                tosend.push(`${i+1}. ${song.title} - Requested by: ${song.requester}`);
+            });
+
+            sendMessage(
+                msg,
+                `__**${msg.guild.name}'s Music Queue:**__ **${tosend.length}** songs ${(tosend.length > 15 ? '*[Only next 15 shown]*' : '')}\n\`\`\`${tosend.slice(0,15).join('\n')}\`\`\``
+            );
+        }
+    },
+    'help': (msg) => {
+
+        let tosend = [
+            '```xl',
+            prefix + 'join : "Join Voice channel of msg sender"',
+            prefix + 'add : "Add a valid youtube link to the queue"',
+            prefix + 'queue : "Shows the current queue, up to 15 songs shown."',
+            prefix + 'play : "Play the music queue if already joined to a voice channel"',
+            '',
+            'the following commands only function while the play command is running:'.toUpperCase(),
+            prefix + 'pause : "pauses the music"',
+            prefix + 'resume : "resumes the music"',
+            prefix + 'skip : "skips the playing song"',
+            prefix + 'time : "Shows the playtime of the song."',
+            'volume+(+++) : "increases volume by 2%/+"',
+            'volume-(---) : "decreases volume by 2%/-"',
+            '```'
+        ];
+
+        sendMessage(msg, tosend.join('\n'));
+    },
+    'reboot': (msg) => {
+
+        if (msg.author.id == tokens.adminID) {
+            //Requires a node module like Forever to work.
+            process.exit();
+        }
+    }
 };
 
+// Export Module
 module.exports = commands;
