@@ -53,5 +53,13 @@ module.exports = {
                 }
             });
         });
+    },
+    'help': (prefix) => {
+
+        return [
+            '** GIF **',
+            prefix + 'gif <keywords>  : "Search gif using keywords"',
+            prefix + 'gifr <keywords> : "Search random gif using keywords"'
+        ].join('\n');
     }
 }

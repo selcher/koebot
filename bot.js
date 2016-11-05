@@ -27,7 +27,22 @@ client.on('message', msg => {
     let cmdName = msgSplit[0];
     let cmdArgs = msgSplit.slice(1).join(' ');
 
-    if (music.hasOwnProperty(cmdName)) {
+    if (cmdName === 'help') {
+
+        let instructions = [
+            '```xl',
+            music[cmdName](prefix),
+            '\n',
+            gif[cmdName](prefix),
+            '\n',
+            translator[cmdName](prefix),
+            '\n',
+            '```'
+        ].join('\n');
+
+        msg.channel.sendMessage(instructions);
+
+    } else if (music.hasOwnProperty(cmdName)) {
 
         music[cmdName](msg, cmdArgs);
 

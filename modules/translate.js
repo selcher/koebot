@@ -17,5 +17,12 @@ module.exports = {
 				reject(e);
 			}
 		});
-	}
+	},
+	'help': (prefix) => {
+
+        return [
+            '** TRANSLATE **',
+            prefix + 'translate <source lang> <target lang> <words> : "Translate words from source language to target language"'
+        ].join('\n');
+    }
 };
