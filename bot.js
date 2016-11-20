@@ -57,9 +57,7 @@ client.on('message', msg => {
 
     } else if (music.hasOwnProperty(cmdName)) {
 
-        music[cmdName](msg, cmdArgs).catch(
-            e => console.log('Koe: Music error >', e)
-        );
+        music[cmdName](msg, cmdArgs);
 
     } else if (gif.hasOwnProperty(cmdName)) {
 
