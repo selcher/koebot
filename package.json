@@ -10,6 +10,7 @@
   "dependencies": {
     "discord.js": "^10.0.1",
     "express": "^4.14.0",
+    "firebase": "^3.6.1",
     "google-translator": "^1.0.1",
     "node-opus": "^0.2.2",
     "request": "^2.75.0",
