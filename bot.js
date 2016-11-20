@@ -7,10 +7,21 @@ const client = new Discord.Client();
 
 const music = require('./modules/music.js');
 const gif = require('./modules/gif.js');
+const reminder = require('./modules/reminder.js');
 const translator = require('./modules/translate.js');
 
+let reminderModuleAvailable = false;
+
 client.on('ready', () => {
-    console.log('ready!');
+    console.log('Koe: Ready!');
+
+    reminder.init(tokens.firebase).then(
+        () => {
+            reminderModuleAvailable = true;
+            console.log('Koe: Reminder module ready!');
+        },
+        (err) => reminderModuleAvailable = false
+    );
 });
 
 client.on('message', msg => {
@@ -35,6 +46,8 @@ client.on('message', msg => {
             '\n',
             gif[cmdName](prefix),
             '\n',
+            reminder[cmdName](prefix),
+            '\n',
             translator[cmdName](prefix),
             '\n',
             '```'
@@ -44,13 +57,26 @@ client.on('message', msg => {
 
     } else if (music.hasOwnProperty(cmdName)) {
 
-        music[cmdName](msg, cmdArgs);
+        music[cmdName](msg, cmdArgs).catch(
+            e => console.log('Koe: Music error >', e)
+        );
 
     } else if (gif.hasOwnProperty(cmdName)) {
 
-        gif[cmdName](cmdArgs).then(url => {
-            msg.channel.sendMessage(url);
-        });
+        gif[cmdName](cmdArgs).then(
+            url => msg.channel.sendMessage(url)
+        ).catch(
+            e => console.log('Koe: Gif error >', e)
+        );
+
+    } else if (reminderModuleAvailable &&
+        reminder.hasOwnProperty(cmdName)) {
+
+        reminder[cmdName](cmdArgs, msg.author.username).then(
+            eventDetails => msg.channel.sendMessage(eventDetails)
+        ).catch(
+            e => console.log('Koe: Reminder error >', e)
+        );
 
     } else if (translator.hasOwnProperty(cmdName)) {
 
@@ -59,12 +85,10 @@ client.on('message', msg => {
         let keywords = msgSplit.slice(3);
 
         translator[cmdName](srcLang, targetLang, keywords).then(
-            response => {
-                msg.channel.sendMessage(response);
-            }
-        ).catch(e => {
-            console.log('Translation error:', e);
-        });
+            response => msg.channel.sendMessage(response)
+        ).catch(
+            e => console.log('Koe: Translation error >', e)
+        );
 
     }
 });
