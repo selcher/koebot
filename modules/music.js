@@ -185,6 +185,7 @@ const commands = {
 
                 dispatcher.on('end', () => {
                     collector.stop();
+                    queue[queueId].playing = false;
                     queue[queueId].songs.shift();
                     play(queue[queueId].songs[0]);
                 });
