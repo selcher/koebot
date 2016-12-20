@@ -8,6 +8,9 @@ const yt = require('ytdl-core');
 const ytdl = require('youtube-dl');
 
 // Definitions
+let autoPlay = true;
+let repeat = false;
+let repeatLast = true;
 const msgDeleteDelay = 15000;
 
 let wrap = (content) => {
@@ -106,6 +109,15 @@ const pmMessage = (user, content) => {
 
 // API
 const commands = {
+    'autoplay': () => {
+        autoPlay = !autoPlay;
+    },
+    'repeat': () => {
+        repeat = !repeat;
+    },
+    'repeatlast': () => {
+        repeatLast = !repeatLast;
+    },
     'play': (msg) => {
 
         const queueId = getQueueId(msg);
@@ -214,8 +226,16 @@ const commands = {
 
                 dispatcher.on('end', () => {
                     collector.stop();
+
                     queue[queueId].playing = false;
-                    queue[queueId].songs.shift();
+                    // Repeat if:
+                    // only 1 song is left and repeatLast is enabled (default)
+                    // repeat is enabled
+                    (
+                        (queue[queueId].songs.length > 1 && repeatLast) ||
+                        repeat
+                    ) && queue[queueId].songs.shift();
+
                     play(queue[queueId].songs[0]);
                 });
 
@@ -304,7 +324,7 @@ const commands = {
                             message.edit(msgFormats.addedSong(info));
                             message.delete(5000);
 
-                            !isPlaying(queueId) && commands.play(msg);
+                            !isPlaying(queueId) && autoPlay && commands.play(msg);
                         }
                     });
                 }
@@ -342,7 +362,7 @@ const commands = {
                             message.edit(msgFormats.addedSong(info));
                             message.delete(5000);
 
-                            !isPlaying(queueId) && commands.play(msg);
+                            !isPlaying(queueId) && autoPlay && commands.play(msg);
                         }
                     });
 
@@ -380,6 +400,9 @@ const commands = {
             cmdPrefix + 'add <keywords/url> : "Add a valid youtube link to the queue"',
             cmdPrefix + 'queue : "Shows the current queue, up to 15 songs shown."',
             cmdPrefix + 'play : "Play the music queue if already joined to a voice channel"',
+            cmdPrefix + 'autoplay : "Toggle auto play when adding a song"',
+            cmdPrefix + 'repeat : "Toggle repeat of current song"',
+            cmdPrefix + 'repeatlast : "Toggle repeat of last song"',
             '',
             'the following commands only function while the play command is running:'.toUpperCase(),
             cmdPrefix + 'pause : "pauses the music"',
