@@ -33,7 +33,7 @@ const api = {
             () => db.register('reminders', onRemindersUpdate)
         );
     },
-    remind: (input, author) => {
+    remind: (input, author, authorId) => {
 
         return new Promise((resolve, reject) => {
 
@@ -50,7 +50,8 @@ const api = {
                 {
                     date: eventDate,
                     details: eventDetails,
-                    author: author
+                    author: author,
+                    authorId: authorId
                 }
             );
 
@@ -61,7 +62,7 @@ const api = {
             );
         });
     },
-    today: (input, requester) => {
+    today: (input, requester, requesterId) => {
 
         return new Promise((resolve, reject) => {
 
@@ -77,9 +78,12 @@ const api = {
 
                 for (let i = 0; i < totalReminders; i++) {
                     eventInfo = remindersList[i];
-                    remindersToday +=
-                        '@' + eventInfo.author + '\n' +
-                        '- ' + eventInfo.details + '\n\n';
+
+                    if (eventInfo.authorId === requesterId) {
+                        remindersToday +=
+                            '@' + eventInfo.author + '\n' +
+                            '- ' + eventInfo.details + '\n\n';
+                    }
                 }
             }
 

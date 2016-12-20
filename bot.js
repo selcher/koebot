@@ -20,7 +20,10 @@ client.on('ready', () => {
             reminderModuleAvailable = true;
             console.log('Koe: Reminder module ready!');
         },
-        (err) => reminderModuleAvailable = false
+        (err) => {
+            reminderModuleAvailable = false;
+            console.log('Koe: Reminder module broke...');
+        }
     );
 });
 
@@ -70,8 +73,12 @@ client.on('message', msg => {
     } else if (reminderModuleAvailable &&
         reminder.hasOwnProperty(cmdName)) {
 
-        reminder[cmdName](cmdArgs, msg.author.username).then(
-            eventDetails => msg.channel.sendMessage(eventDetails)
+        reminder[cmdName](
+            cmdArgs,
+            msg.author.username,
+            msg.author.id
+        ).then(
+            eventDetails => msg.author.sendMessage(eventDetails)
         ).catch(
             e => console.log('Koe: Reminder error >', e)
         );
