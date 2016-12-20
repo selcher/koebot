@@ -17,13 +17,13 @@ let wrap = (content) => {
 let msgFormats = {
     addSongFirst: wrap(`Add some songs to the queue first with ${prefix}add`),
     missingAddParam: wrap(`Add keywords, a url, or youtube video id after ${prefix}add`),
-    emptyQueue: wrap('Queue is empty'),
+    emptyQueue: wrap('Song queue is empty'),
     addedSong: (song) => wrap(`Added ${song.title} to the queue\n`) +
         song.thumbnail,
     alreadyPlaying: wrap('Already Playing'),
     playError: 'Oops, an error occured. Resuming in 5s...',
     playing: (song) => wrap(
-            `Now Playing: ${song.title} as requested by: @${song.requester}`
+            `Now Playing:\n${song.title}\nas requested by: @${song.requester}`
         ),
     paused: (song) => wrap(
             `Paused: ${song.title}`
@@ -43,6 +43,18 @@ let msgFormats = {
 };
 
 let queue = {};
+const addToQueue = (id, song) => {
+    if (!queue.hasOwnProperty(id)) {
+        queue[id] = {};
+        queue[id].playing = false;
+        queue[id].songs = [];
+    }
+
+    queue[id].songs.push(song);
+};
+const isPlaying = (id) => {
+    return queue[id] && queue[id].playing;
+};
 const getQueueId = (msg) => {
     return msg.guild.id;
 };
@@ -277,15 +289,10 @@ const commands = {
 
                         } else {
 
-                            const queueId = getQueueId(msg);
+                            let queueId = getQueueId(msg);
 
-                            if (!queue.hasOwnProperty(queueId)) {
-                                queue[queueId] = {};
-                                queue[queueId].playing = false;
-                                queue[queueId].songs = [];
-                            }
-
-                            queue[queueId].songs.push(
+                            addToQueue(
+                                queueId,
                                 {
                                     url: 'https://www.youtube.com/watch?v=' + info.id,
                                     title: info.title,
@@ -296,6 +303,8 @@ const commands = {
 
                             message.edit(msgFormats.addedSong(info));
                             message.delete(5000);
+
+                            !isPlaying(queueId) && commands.play(msg);
                         }
                     });
                 }
@@ -318,23 +327,22 @@ const commands = {
 
                         } else {
 
-                            const queueId = getQueueId(msg);
+                            let queueId = getQueueId(msg);
 
-                            if (!queue.hasOwnProperty(queueId)) {
-                                queue[queueId] = {};
-                                queue[queueId].playing = false;
-                                queue[queueId].songs = [];
-                            }
-
-                            queue[queueId].songs.push(
+                            addToQueue(
+                                queueId,
                                 {
                                     url: url,
                                     title: info.title,
-                                    requester: msg.author.username
+                                    requester: msg.author.username,
+                                    requesterId: msg.author.id
                                 }
                             );
 
-                            sendMessage(msg, msgFormats.addedSong(info));
+                            message.edit(msgFormats.addedSong(info));
+                            message.delete(5000);
+
+                            !isPlaying(queueId) && commands.play(msg);
                         }
                     });
 
