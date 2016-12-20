@@ -43,20 +43,24 @@ let msgFormats = {
 };
 
 let queue = {};
-let getQueueId = (msg) => {
+const getQueueId = (msg) => {
     return msg.guild.id;
 };
-let getVoiceConnection = (msg) => {
+const getVoiceConnection = (msg) => {
     return msg.guild.voiceConnection;
 };
-let getVoiceChannel = (msg) => {
+const getVoiceChannel = (msg) => {
     return msg.member.voiceChannel;
 };
 
-let log = () => {
+const getUser = (msg, userId) => {
+    return msg.client.fetchUser(userId);
+};
+
+const log = () => {
     console.log.apply(console, arguments);
 };
-let sendMessage = (msg, content, dontDelete)  => {
+const sendMessage = (msg, content, dontDelete)  => {
     return new Promise((resolve, reject) => {
         msg.channel.sendMessage(
             content
@@ -75,6 +79,15 @@ let sendMessage = (msg, content, dontDelete)  => {
                 );
                 reject(err);
             }
+        );
+    });
+};
+const pmMessage = (user, content) => {
+    return new Promise((resolve, reject) => {
+        user.sendMessage(content).then(
+            () => resolve(content)
+        ).catch(
+            (err) => reject(err)
         );
     });
 };
@@ -124,6 +137,10 @@ const commands = {
                 queue[queueId].playing = true;
 
                 sendMessage(msg, msgFormats.playing(song));
+
+                getUser(msg, song.requesterId).then(
+                    (user) => pmMessage(user, msgFormats.playing(song))
+                );
 
                 let dispatcher = voiceConnection.playStream(
                     yt(song.url, {quality: 'lowest', audioonly: true}),
@@ -214,7 +231,7 @@ const commands = {
             if (!voiceChannel || voiceChannel.type !== 'voice') {
 
                 msg.reply(msgFormats.noVoiceChannel);
-                reject('No voice channel found');
+                reject(msgFormats.noVoiceChannel);
 
             } else if (voiceChannel.connection) {
 
@@ -272,7 +289,8 @@ const commands = {
                                 {
                                     url: 'https://www.youtube.com/watch?v=' + info.id,
                                     title: info.title,
-                                    requester: msg.author.username
+                                    requester: msg.author.username,
+                                    requesterId: msg.author.id
                                 }
                             );
 
