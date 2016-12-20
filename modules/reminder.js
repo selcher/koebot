@@ -1,60 +1,46 @@
 'use strict';
 
+// Modules
 const Request = require('request');
-const firebase = require('firebase');
+const db = require('./firebase-wrapper.js');
 
-var events = {};
+// Variables
+let events = {};
 
-var firebaseApp = null;
-var firebaseDBRef = null;
-var firebaseConfig = {
-    apiKey: '',
-    authDomain: '',
-    databaseURL: '',
-    storageBucket: '',
-    messagingSenderId: ''
+const getCurrentDate = () => {
+    let now = new Date();
+    let month = now.getMonth() + 1;
+    let day = now.getDate() > 10 ?
+        now.getDate() : '0' + now.getDate();
+    let year = now.getFullYear();
+
+    return (month + '' + day + '' + year);
+};
+
+const onRemindersUpdate = (dataSnapShot) => {
+    events = dataSnapShot ? dataSnapShot.val() : {};
 };
 
 /**
- * Add reminders and store it on a database (firebase)
+ * Add reminders and store it on a database
  */
-module.exports = {
+const api = {
     init: (config) => {
-        firebaseConfig = config;
-        firebaseApp = firebase.initializeApp(firebaseConfig);
 
-        var signInPromise = firebase.auth().signInAnonymously();
-
-        return new Promise((resolve, reject) => {
-            signInPromise.then(
-                () => {
-
-                    // Store Reference
-                    firebaseDBRef = firebase.database().ref('reminders');
-
-                    // Sync content changes
-                    firebaseDBRef.on('value', function(dataSnapShot) {
-                        var newContent = dataSnapShot.val();
-
-                        if (newContent) {
-                            events = newContent;
-                        }
-                    });
-
-                    resolve();
-                },
-                err => reject(err)
-            )
-        });
+        return db.init(config).then(
+            () => db.login()
+        ).then(
+            () => db.register('reminders', onRemindersUpdate)
+        );
     },
     remind: (input, author) => {
 
         return new Promise((resolve, reject) => {
 
-            var matches = input.match(/(\d\d\/\d\d\/\d\d\d\d) (.*)/);
-            var eventDate = matches[1];
-            var eventDetails = matches[2];
-            var dateAdded = eventDate.replace(/\//g, '');
+            let matches = input.match(/(\d\d\/\d\d\/\d\d\d\d) (.*)/);
+            let eventDate = matches[1];
+            let eventDetails = matches[2];
+            let dateAdded = eventDate.replace(/\//g, '');
 
             if (!events[dateAdded]) {
                 events[dateAdded] = [];
@@ -68,30 +54,28 @@ module.exports = {
                 }
             );
 
-            firebaseDBRef.set(events);
-
-            resolve('```Reminder added on ' + eventDate + '```');
+            db.set(events).then(
+                () => resolve('```Reminder added on ' + eventDate + '```')
+            ).catch(
+                (err) => reject(err)
+            );
         });
     },
     today: (input, requester) => {
 
         return new Promise((resolve, reject) => {
 
-            var now = new Date();
-            var month = now.getMonth() + 1;
-            var day = now.getDate();
-            var year = now.getFullYear();
-            var dateToday = month + '' + day + '' + year;
-            var remindersList = events[dateToday];
-            var remindersToday = 'Nothing to do today~';
+            let dateToday = getCurrentDate();
+            let remindersList = events[dateToday];
+            let remindersToday = 'Nothing to do today~';
 
             if (remindersList) {
                 remindersToday = '';
 
-                var totalReminders = remindersList.length;
-                var eventInfo = null;
+                let totalReminders = remindersList.length;
+                let eventInfo = null;
 
-                for (var i = 0; i < totalReminders; i++) {
+                for (let i = 0; i < totalReminders; i++) {
                     eventInfo = remindersList[i];
                     remindersToday +=
                         '@' + eventInfo.author + '\n' +
@@ -110,4 +94,6 @@ module.exports = {
             prefix + 'today : "List reminders for today"'
         ].join('\n');
     }
-}
+};
+
+module.exports = api;
