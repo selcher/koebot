@@ -12,7 +12,11 @@ A v10 Discord.JS music bot inspired from [OhGodMusicBot](https://github.com/bdis
 - Gif Search
 - Translation
 
-#### Usage:
+#### In Progress:
+
+- Reminders
+
+#### Installation:
 
 1. Clone or download the repository
 2. Install the dependencies:
