@@ -2,7 +2,7 @@
 
 A v10 Discord.JS music bot inspired from [OhGodMusicBot](https://github.com/bdistin/OhGodMusicBot)
 
-<p align="center">
+<p align="left">
 <a href="https://david-dm.org/selcher/koebot"><img src="https://david-dm.org/selcher/koebot.svg" alt="Dependency Status"></a>
 </p>
 
