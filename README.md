@@ -11,6 +11,7 @@ A v10 Discord.JS music bot inspired from [OhGodMusicBot](https://github.com/bdis
 - Music
 - Gif Search
 - Translation
+- Chat (wit.ai)
 
 #### In Progress:
 
