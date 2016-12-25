@@ -9,8 +9,12 @@ const music = require('./modules/music.js');
 const gif = require('./modules/gif.js');
 const reminder = require('./modules/reminder.js');
 const translator = require('./modules/translate.js');
+const chat = require('./modules/wit-wrapper.js');
+const chatActions = require('./modules/wit-actions.js');
 
+// flags...
 let reminderModuleAvailable = false;
+let chatModuleAvailable = false;
 
 client.on('ready', () => {
     console.log('Koe: Ready!');
@@ -23,6 +27,17 @@ client.on('ready', () => {
         (err) => {
             reminderModuleAvailable = false;
             console.log('Koe: Reminder module broke...');
+        }
+    );
+
+    chat.init(tokens.wit, chatActions).then(
+        () => {
+            chatModuleAvailable = true;
+            console.log('Koe: Chat module ready!');
+        },
+        (err) => {
+            chatModuleAvailable = false;
+            console.log('Koe: Chat module broke...', err);
         }
     );
 });
@@ -93,6 +108,15 @@ client.on('message', msg => {
             response => msg.channel.sendMessage(response)
         ).catch(
             e => console.log('Koe: Translation error >', e)
+        );
+
+    } else if (chatModuleAvailable &&
+        cmdName.toLowerCase() === 'koe') {
+
+        chat.message(msg.author.id, cmdArgs).then(
+            response => msg.channel.sendMessage(response)
+        ).catch(
+            e => console.log('Koe: Chat error >', e)
         );
 
     }
