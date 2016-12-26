@@ -52,8 +52,8 @@ client.on('message', msg => {
     }
 
     let message = msg.content;
-    let msgSplit = message.toLowerCase().slice(prefix.length).split(' ');
-    let cmdName = msgSplit[0];
+    let msgSplit = message.slice(prefix.length).split(' ');
+    let cmdName = msgSplit[0].toLowerCase();
     let cmdArgs = msgSplit.slice(1).join(' ');
 
     if (cmdName === 'help') {
