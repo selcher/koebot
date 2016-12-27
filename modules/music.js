@@ -6,6 +6,8 @@ const prefix = tokens.prefix;
 
 const yt = require('ytdl-core');
 const ytdl = require('youtube-dl');
+const fs = require('fs');
+const request = require('request');
 
 // Definitions
 let autoPlay = true;
@@ -117,6 +119,43 @@ const commands = {
     },
     'repeatlast': () => {
         repeatLast = !repeatLast;
+    },
+    'dl': (msg, cmdArgs) => {
+
+        const url = cmdArgs.split(' ')[0];
+
+        sendMessage(msg, 'Starting download from ' + url, true).then(
+            (message) => {
+
+                yt.getInfo(url, (err, info) => {
+
+                    if (err) {
+                        message.edit('Error on download');
+                        return;
+                    }
+
+                    message.edit('Downloading ' + info.title).catch(
+                        err => console.log('Error editing msg:', err)
+                    );
+
+                    let video = ytdl(url);
+
+                    video.pipe(
+                        fs.createWriteStream(info.title + '.mp4', {flags: 'a'})
+                    );
+
+                    video.on('complete', (info) => {
+                        message.edit('Download complete');
+                    });
+
+                    video.on('end', (info) => {
+                        message.edit('Download end');
+                    });
+                });
+
+            }
+        );
+
     },
     'play': (msg) => {
 
