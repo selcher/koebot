@@ -61,7 +61,7 @@ const isPlaying = (id) => {
     return queue[id] && queue[id].playing;
 };
 const getQueueId = (msg) => {
-    return msg.guild.id;
+    return msg.channel.id || 0;
 };
 const getVoiceConnection = (msg) => {
     return msg.guild.voiceConnection;
@@ -170,7 +170,16 @@ const commands = {
             return sendMessage(msg, msgFormats.alreadyPlaying);
         }
 
-        let voiceConnection = getVoiceConnection(msg);
+        let voiceConnection = null;
+
+        try {
+            voiceConnection = getVoiceConnection(msg);
+        } catch (exception) {
+            return sendMessage(
+                msg,
+                msgFormats.noVoiceChannel
+            );
+        }
 
         if (!voiceConnection) {
             return commands.join(msg).then(

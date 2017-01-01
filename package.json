@@ -1,14 +1,14 @@
 {
   "name": "koebot",
   "version": "1.0.0",
-  "description": "A v10 Discord.JS music bot",
+  "description": "A v11 Discord.JS music bot",
   "main": "bot.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js"
   },
   "dependencies": {
-    "discord.js": "^10.0.1",
+    "discord.js": "^11.0.0",
     "express": "^4.14.0",
     "firebase": "^3.6.1",
     "google-translator": "^1.0.1",
