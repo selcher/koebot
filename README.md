@@ -1,6 +1,6 @@
 # Koe Bot ❤
 
-A v11 Discord.JS music bot inspired from [OhGodMusicBot](https://github.com/bdistin/OhGodMusicBot)
+A v11 Discord.JS bot inspired from [OhGodMusicBot](https://github.com/bdistin/OhGodMusicBot)
 
 <p align="left">
 <a href="https://david-dm.org/selcher/koebot"><img src="https://david-dm.org/selcher/koebot.svg" alt="Dependency Status"></a>
@@ -27,7 +27,7 @@ $ cd koebot
 $ npm install
 ```
 
-3. Update tokens.json with your token and user id
+3. Update the bot settings in config.json with your token and user id
 4. Start the bot:
 
 ```sh
