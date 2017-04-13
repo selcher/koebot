@@ -73,6 +73,30 @@ client.on('message', msg => {
 
         msg.channel.sendMessage(instructions);
 
+    } else if (cmdName === 'sleep') {
+
+        if (msg.author.id == botConfig.adminID) {
+
+            msg.channel.sendMessage('Bye ...').then(
+                () => client.destroy()
+            ).then(
+                () => process.exit()
+            ).catch(
+                e => {
+                    msg.channes.sendMessage('I can\'t sleep ...');
+                    console.log(`${botName}: can't sleep > `, e);
+                }
+            );
+
+        } else {
+
+            msg.channel.sendMessage('Only master can make me sleep!');
+            console.log(`${botName}: unauthorized to sleep`);
+        }
+
+        // TODO:
+        // Reboot: requires a node module like Forever to work.
+
     } else if (music.hasOwnProperty(cmdName)) {
 
         music[cmdName](msg, cmdArgs);
