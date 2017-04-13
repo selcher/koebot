@@ -42,8 +42,9 @@ let msgFormats = {
     emptyQueue: wrap(
             'Song queue is empty'
         ),
-    addedSong: (song) => wrap(`Added ${song.title} to the queue\n`) +
-        song.thumbnail,
+    addedSong: (song) => wrap(
+            `Added ${song.title} to the queue\n`
+        ) + song.thumbnail,
     alreadyPlaying: wrap(
             'Already Playing'
         ),
@@ -51,8 +52,8 @@ let msgFormats = {
             `Oops, an error occured. Resuming in ${duration/1000}s...`
         ),
     playing: (song) => wrap(
-            `Now Playing:\n${song.title}\nrequest by: @${song.requester}\n${song.thumbnail}`
-        ),
+            `Now Playing:\n${song.title}\nrequest by: @${song.requester}`
+        ) + song.thumbnail,
     paused: (song) => wrap(
             `Paused:\n${song.title}`
         ),
