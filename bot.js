@@ -156,4 +156,4 @@ client.on('message', msg => {
     }
 });
 
-client.login(tokens.d_token);
+client.login(botConfig.d_token);
