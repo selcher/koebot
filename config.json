@@ -1,0 +1,26 @@
+{
+    "bot": {
+        "name": "Koe",
+        "prefix": ">",
+        "adminID": "",
+        "channelID": "",
+        "d_token": ""
+    },
+    "music": {
+        "autoPlay": true,
+        "repeat": false,
+        "repeatLast": false,
+        "msgDeleteDelay": 15000,
+        "passes": 1
+    },
+    "firebase": {
+        "apiKey": "",
+        "authDomain": "",
+        "databaseURL": "",
+        "storageBucket": "",
+        "messagingSenderId": ""
+    },
+    "wit": {
+        "token": ""
+    }
+}
