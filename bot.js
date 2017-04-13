@@ -1,9 +1,8 @@
 'use strict';
 
+// Modules
+const config = require('./config.json');
 const Discord = require('discord.js');
-const tokens = require('./tokens.json');
-const prefix = tokens.prefix;
-const client = new Discord.Client();
 
 const music = require('./modules/music.js');
 const gif = require('./modules/gif.js');
@@ -12,38 +11,45 @@ const translator = require('./modules/translate.js');
 const chat = require('./modules/wit-wrapper.js');
 const chatActions = require('./modules/wit-actions.js');
 
-// flags...
+// Bot Variables
+const client = new Discord.Client();
+const botConfig = config.bot;
+const botName = botConfig.name;
+const prefix = botConfig.prefix;
 let reminderModuleAvailable = false;
 let chatModuleAvailable = false;
 
+// Event Listeners
 client.on('ready', () => {
-    console.log('Koe: Ready!');
 
-    reminder.init(tokens.firebase).then(
+    console.log(`${botName}: Ready!`);
+
+    reminder.init(config.firebase).then(
         () => {
             reminderModuleAvailable = true;
-            console.log('Koe: Reminder module ready!');
+            console.log(`${botName}: Reminder module ready!`);
         },
         (err) => {
             reminderModuleAvailable = false;
-            console.log('Koe: Reminder module broke...');
+            console.log(`${botName}: Reminder module disabled.`);
         }
     );
 
-    chat.init(tokens.wit, chatActions).then(
+    chat.init(config.wit.token, chatActions).then(
         () => {
             chatModuleAvailable = true;
-            console.log('Koe: Chat module ready!');
+            console.log(`${botName}: Chat module ready!`);
         },
         (err) => {
             chatModuleAvailable = false;
-            console.log('Koe: Chat module broke...', err);
+            console.log(`${botName}: Chat module disabled.`);
         }
     );
 });
 
 client.on('message', msg => {
-    let stop = msg.author.bot ||
+
+    const stop = msg.author.bot ||
         (msg.client !== client) ||
         !msg.content.startsWith(prefix);
 
@@ -60,6 +66,10 @@ client.on('message', msg => {
 
         let instructions = [
             '```xl',
+            `** ${botName} **`,
+            `${prefix}help  : "Show commands"`,
+            `${prefix}sleep : "Exit"`,
+            '\n',
             music[cmdName](prefix),
             '\n',
             gif[cmdName](prefix),
@@ -106,7 +116,7 @@ client.on('message', msg => {
         gif[cmdName](cmdArgs).then(
             url => msg.channel.sendMessage(url)
         ).catch(
-            e => console.log('Koe: Gif error >', e)
+            e => console.log(`${botName}: Gif error >`, e)
         );
 
     } else if (reminderModuleAvailable &&
@@ -119,7 +129,7 @@ client.on('message', msg => {
         ).then(
             eventDetails => msg.author.sendMessage(eventDetails)
         ).catch(
-            e => console.log('Koe: Reminder error >', e)
+            e => console.log(`${botName}: Reminder error >`, e)
         );
 
     } else if (translator.hasOwnProperty(cmdName)) {
@@ -131,16 +141,16 @@ client.on('message', msg => {
         translator[cmdName](srcLang, targetLang, keywords).then(
             response => msg.channel.sendMessage(response)
         ).catch(
-            e => console.log('Koe: Translation error >', e)
+            e => console.log(`${botName}: Translation error >`, e)
         );
 
     } else if (chatModuleAvailable &&
-        cmdName.toLowerCase() === 'koe') {
+        cmdName.toLowerCase() === botName.toLowerCase()) {
 
         chat.message(msg.author.id, cmdArgs).then(
             response => msg.channel.sendMessage(response)
         ).catch(
-            e => console.log('Koe: Chat error >', e)
+            e => console.log(`${botName}: Chat error >`, e)
         );
 
     }
