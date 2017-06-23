@@ -22,5 +22,11 @@
     },
     "wit": {
         "token": ""
+    },
+    "google": {
+        "youtube": {
+            "apiKey": "",
+            "playlist": ""
+        }
     }
 }
