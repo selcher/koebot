@@ -236,11 +236,12 @@ client.on('message', msg => {
     if (command) {
         command.run(msg, cmdName, cmdArgs);
     }
-    else {
-        msg.channel.sendMessage(
-            `${botName}: Command not found [${cmdName}]`
-        );
-    }
+    // TODO: check when playing music
+    // else {
+    //     msg.channel.sendMessage(
+    //         `${botName}: Command not found [${cmdName}]`
+    //     );
+    // }
 });
 
 client.login(botConfig.d_token);
