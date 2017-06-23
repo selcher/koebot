@@ -131,11 +131,18 @@ const editMessage = (msg, content, deleteDisabled) => {
     });
 };
 
+// Music playlist
 let searchOpts = {
     maxResults: 3,
     key: ''
 };
+let playList = {
+    enabled: false,
+    i: 0,
+    list: []
+};
 let queue = {};
+
 const addToQueue = (id, song) => {
     if (!queue.hasOwnProperty(id)) {
         queue[id] = {};
@@ -200,6 +207,39 @@ const searchVideoInfo = (keyword, msg) => {
         });
     });
 };
+
+const getPlaylist = (apiKey, playlistId) => {
+    const searchApi = [
+        'https://www.googleapis.com/youtube/v3/playlistItems?',
+        `playlistId=${playlistId}`,
+        '&part=snippet',
+        '&maxResults=25',
+        `&key=${apiKey}`
+    ].join('');
+
+    return new Promise((resolve, reject) => {
+        request(searchApi, (err, response, body) => {
+            if (err) {
+                reject(err);
+            }
+            else if (response.statusCode === 200) {
+                let parsedData = JSON.parse(body);
+                let plTitles = [];
+
+                parsedData.items.forEach(item => {
+                    // url: 'https://www.youtube.com/watch?v=' +
+                    //      item.snippet.resourceId.videoId,
+                    // title: item.snippet.title,
+                    // thumbnail: item.snippet.thumbnails.default.url
+                    plTitles.push(item.snippet.title);
+                });
+
+                resolve(plTitles);
+            }
+            else {
+                reject(response.statusCode);
+            }
+        });
     });
 };
 
@@ -207,6 +247,22 @@ const searchVideoInfo = (keyword, msg) => {
 const commands = {
     init: (apiKey, playlistId) => {
         searchOpts.key = apiKey;
+
+        return new Promise((resolve, reject) => {
+            getPlaylist(apiKey, playlistId).then(
+                (playlist) => {
+                    playList.list = playlist;
+                    resolve();
+                },
+                (err) => {
+                    log(
+                        'YouTube Data Api Playlist Request Error:',
+                        err
+                    );
+                    reject();
+                }
+            )
+        });
     },
     autoplay: (msg) => {
         autoPlay = !autoPlay;
@@ -220,9 +276,18 @@ const commands = {
         repeatLast = !repeatLast;
         sendMessage(msg, msgFormats.repeatLast(repeatLast));
     },
+    playlist: (msg, cmdArgs) => {
+        playList.enabled = cmdArgs ? true : !playList.enabled;
 
+        if (playList.enabled) {
+            const nextLinkInPlaylist = playList.list[playList.i];
 
+            commands.add(msg, nextLinkInPlaylist);
 
+            playList.i = playList.i + 1 >= playList.list.length ?
+                0 : playList.i + 1;
+        }
+    },
     play: (msg) => {
 
         const queueId = getQueueId(msg);
@@ -369,6 +434,13 @@ const commands = {
                     queue[queueId].songs.shift();
                 }
 
+                // Continue with playlist
+                // if a song has not been added to the queue
+                if (playList.enabled && queue[queueId].songs.length <= 0) {
+                    commands.playlist(msg, true);
+                    return;
+                }
+
                 // TODO:
                 // Handle cases where stream dispatcher
                 // ends without playing song
@@ -381,6 +453,12 @@ const commands = {
                     msg,
                     msgFormats.playError(msgDeleteDelay)
                 ).then(message => {
+
+                    if (playList.enabled && queue[queueId].songs.length) {
+                        // TODO: try re attempts
+                        dispatcher.end();
+                        return;
+                    }
 
                     // Pause and resume later on error
                     // TODO: limit re attempts
@@ -546,6 +624,7 @@ const commands = {
             cmdPrefix + 'add <keywords/url> : "Add a valid youtube link to the queue"',
             cmdPrefix + 'queue : "Shows the current queue, up to 15 songs shown."',
             cmdPrefix + 'play : "Play the music queue if already joined to a voice channel"',
+            cmdPrefix + 'playlist : "Start playing playlist"',
             cmdPrefix + 'autoplay : "Toggle auto play when adding a song"',
             cmdPrefix + 'repeat : "Toggle repeat of current song"',
             cmdPrefix + 'repeatlast : "Toggle repeat of last song"',
