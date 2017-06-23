@@ -368,7 +368,7 @@ const commands = {
                     sendMessage(msg, msgFormats.skipped(song)).then(
                         message => dispatcher.end()
                     );
-                } else if (m.content.startsWith('volume+')) {
+                } else if (m.content.startsWith(prefix + 'vol+')) {
                     const volume = Math.round(dispatcher.volume * 50);
 
                     if (volume < 100) {
@@ -383,7 +383,7 @@ const commands = {
                     }
 
                     sendMessage(msg, msgFormats.volume(volume));
-                } else if (m.content.startsWith('volume-')) {
+                } else if (m.content.startsWith(prefix + 'vol-')) {
                     const volume = Math.round(dispatcher.volume * 50);
 
                     if (volume > 0) {
@@ -634,8 +634,8 @@ const commands = {
             cmdPrefix + 'resume : "resumes last played song"',
             cmdPrefix + 'skip : "skips the playing song"',
             cmdPrefix + 'np : "Shows the playtime of current song."',
-            'volume+(+++) : "increases volume by 2%/+"',
-            'volume-(---) : "decreases volume by 2%/-"'
+            cmdPrefix + 'vol+(+++) : "increases volume by 2%/+"',
+            cmdPrefix + 'vol-(---) : "decreases volume by 2%/-"'
         ].join('\n');
     }
 };
