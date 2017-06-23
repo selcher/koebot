@@ -2,7 +2,7 @@
 
 // Modules
 const yt = require('ytdl-core');
-const ytdl = require('youtube-dl');
+const search = require('youtube-search');
 const fs = require('fs');
 const request = require('request');
 
@@ -99,6 +99,56 @@ let msgFormats = {
         )
 };
 
+const log = console.log;
+const sendMessage = (msg, content, dontDelete)  => {
+    return new Promise((resolve, reject) => {
+        msg.channel.sendMessage(
+            content
+        ).then(
+            message => {
+                !dontDelete && message.delete(msgDeleteDelay);
+                resolve(message);
+            }
+            else {
+                resolve({
+                    "data": info,
+                    "message": msg
+                });
+            }
+        );
+    });
+};
+const pmMessage = (user, content) => {
+    return new Promise((resolve, reject) => {
+        user.sendMessage(content).then(
+            () => resolve(content)
+        ).catch(
+            (err) => reject(err)
+        );
+    });
+};
+const editMessage = (msg, content, deleteDisabled) => {
+    return new Promise((resolve, reject) => {
+        msg.edit(
+            content
+        ).then(
+            message => {
+                !deleteDisabled && message.delete(msgDeleteDelay);
+                resolve(message);
+            }
+        ).catch(
+            err => {
+                log(`Error editing msg: ${content}`);
+                reject(err);
+            }
+        );
+    });
+};
+
+let searchOpts = {
+    maxResults: 3,
+    key: ''
+};
 let queue = {};
 const addToQueue = (id, song) => {
     if (!queue.hasOwnProperty(id)) {
@@ -126,41 +176,42 @@ const getUser = (msg, userId) => {
     return msg.client.fetchUser(userId);
 };
 
-const log = () => {
-    console.log.apply(console, arguments);
-};
-const sendMessage = (msg, content, dontDelete)  => {
+// Video helper functions
+const getVideoInfo = (url, msg) => {
     return new Promise((resolve, reject) => {
-        msg.channel.sendMessage(
-            content
-        ).then(
-            message => {
-                !dontDelete && message.delete(msgDeleteDelay);
-                resolve(message);
+        yt.getInfo(url, (err, info) => {
+            if (err) {
+                reject({
+                    "error": err,
+                    "message": msg
+                });
             }
-        ).catch(
-            err => {
-                log(`Error sending msg: ${content}`);
-                reject(err);
+            else {
+                resolve({
+                    "data": info,
+                    "message": msg
+                });
             }
-        );
+        });
     });
 };
-const editMessage = (msg, content, dontDelete) => {
+
+const searchVideoInfo = (keyword, msg) => {
     return new Promise((resolve, reject) => {
-        msg.edit(
-            content
-        ).then(
-            message => {
-                !dontDelete && message.delete(msgDeleteDelay);
-                resolve(message);
+        search(keyword, searchOpts, (err, results) => {
+            if (err) {
+                reject({
+                    "error": err,
+                    "message": msg
+                });
             }
-        ).catch(
-            err => {
-                log(`Error editing msg: ${content}`);
-                reject(err);
+            else {
+                resolve({
+                    "data": results[0],
+                    "message": msg
+                });
             }
-        );
+        });
     });
 };
 const pmMessage = (user, content) => {
@@ -175,6 +226,9 @@ const pmMessage = (user, content) => {
 
 // API
 const commands = {
+    init: (apiKey, playlistId) => {
+        searchOpts.key = apiKey;
+    },
     autoplay: (msg) => {
         autoPlay = !autoPlay;
         sendMessage(msg, msgFormats.autoPlay(autoPlay));
@@ -421,52 +475,53 @@ const commands = {
     add: (msg, cmdArgs) => {
 
         let url = cmdArgs;
+        let isLink = url.indexOf('http') >= 0;
 
         if (url == '' || url === undefined) {
 
             sendMessage(msg, msgFormats.missingAddParam);
 
-        } else if (!url.toLowerCase().startsWith('http')) {
-
-            // If the suffix doesn't start with 'http',
-            // assume it's a search.
-            url = 'gvsearch1:' + url;
+        } else if (!isLink) {
 
             sendMessage(
                 msg,
                 msgFormats.searchVideoKeywords(cmdArgs),
                 true
             ).then(
-                message => {
+                message => searchVideoInfo(url, message),
+                err => log('Error sending message: search video')
+            ).then(
+                response => {
+                    let info = response.data;
+                    let message = response.message;
+                    let queueId = getQueueId(msg);
 
-                    ytdl.getInfo(url, (err, info) => {
-                        if (err) {
-
-                            editMessage(message, msgFormats.searchVideoError);
-
-                        } else {
-
-                            let queueId = getQueueId(msg);
-
-                            addToQueue(
-                                queueId,
-                                {
-                                    url: 'https://www.youtube.com/watch?v=' + info.id,
-                                    title: info.title,
-                                    duration: info.duration,
-                                    thumbnail: info.thumbnail,
-                                    requester: msg.author.username,
-                                    requesterId: msg.author.id
-                                }
-                            );
-
-                            editMessage(message, msgFormats.addedSong(info));
-
-                            !isPlaying(queueId) && autoPlay &&
-                                commands.play(msg);
+                    addToQueue(
+                        queueId,
+                        {
+                            url: 'https://www.youtube.com/watch?v=' + info.id,
+                            title: info.title,
+                            duration: info.duration || '0',
+                            thumbnail: info.thumbnail || '',
+                            requester: msg.author.username,
+                            requesterId: msg.author.id
                         }
-                    });
+                    );
+
+                    editMessage(message, msgFormats.addedSong(info));
+
+                    !isPlaying(queueId) && autoPlay &&
+                        commands.play(msg);
+                },
+                response => {
+                    log(`Error adding song: ${url}\n${response.error}`);
+                    editMessage(
+                        response.message,
+                        msgFormats.searchVideoError
+                    );
                 }
+            ).catch(
+                err => log(`Error adding song: ${url}\n${err}`)
             );
 
         } else if (url) {
@@ -476,37 +531,39 @@ const commands = {
                 msgFormats.searchVideoUrl,
                 true
             ).then(
-                message => {
+                message => getVideoInfo(url, message)
+            ).then(
+                (response) => {
+                    let info = response.data;
+                    let message = response.message;
+                    let queueId = getQueueId(msg);
 
-                    yt.getInfo(url, (err, info) => {
-                        if (err) {
-
-                            editMessage(message, msgFormats.invalidVideoLink(err));
-
-                        } else {
-
-                            let queueId = getQueueId(msg);
-
-                            addToQueue(
-                                queueId,
-                                {
-                                    url: url,
-                                    title: info.title,
-                                    duration: info.duration,
-                                    thumbnail: info.thumbnail,
-                                    requester: msg.author.username,
-                                    requesterId: msg.author.id
-                                }
-                            );
-
-                            editMessage(message, msgFormats.addedSong(info));
-
-                            !isPlaying(queueId) && autoPlay &&
-                                commands.play(msg);
+                    addToQueue(
+                        queueId,
+                        {
+                            url: url,
+                            title: info.title,
+                            duration: info.duration,
+                            thumbnail: info.thumbnail || '',
+                            requester: msg.author.username,
+                            requesterId: msg.author.id
                         }
-                    });
+                    );
 
+                    editMessage(message, msgFormats.addedSong(info));
+
+                    !isPlaying(queueId) && autoPlay &&
+                        commands.play(msg);
+                },
+                (response) => {
+                    log(`Error adding link: ${url}\n${response.error}`);
+                    editMessage(
+                        response.message,
+                        msgFormats.invalidVideoLink(response.error)
+                    );
                 }
+            ).catch(
+                err => log(`Error adding link: ${url}\n${err}`)
             );
         }
     },
