@@ -6,6 +6,7 @@ const Discord = require('discord.js');
 
 const music = require('./modules/music.js');
 const gif = require('./modules/gif.js');
+const imgSearch = require('./modules/img-search.js');
 const reminder = require('./modules/reminder.js');
 const translator = require('./modules/translate.js');
 const chat = require('./modules/wit-wrapper.js');
@@ -30,6 +31,22 @@ let modules = {
         ],
         run: (msg, cmdName, cmdArgs) => {
             music[cmdName](msg, cmdArgs);
+        }
+    },
+    imgSearch: {
+        pointer: imgSearch,
+        status: 'error',
+        available: false,
+        initParameters: [
+            searchConfig.apiKey,
+            searchConfig.searchEngineId
+        ],
+        run: (msg, cmdName, cmdArgs) => {
+            imgSearch[cmdName](cmdArgs).then(
+                url => msg.channel.sendMessage(url)
+            ).catch(
+                e => consolelog(`${botName}: Img Search error >`, e)
+            );
         }
     },
     gif: {
@@ -163,6 +180,8 @@ client.on('message', msg => {
                     music[cmdName](botPrefix),
                     '\n',
                     gif[cmdName](botPrefix),
+                    '\n',
+                    imgSearch[cmdName](botPrefix),
                     '\n',
                     reminder[cmdName](botPrefix),
                     '\n',

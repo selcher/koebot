@@ -24,6 +24,10 @@
         "token": ""
     },
     "google": {
+        "customSearch": {
+            "apiKey": "",
+            "searchEngineId": ""
+        },
         "youtube": {
             "apiKey": "",
             "playlist": ""
