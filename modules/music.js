@@ -369,14 +369,15 @@ const commands = {
                         message => dispatcher.end()
                     );
                 } else if (m.content.startsWith(prefix + 'vol+')) {
-                    const volume = Math.round(dispatcher.volume * 50);
+                    let volume = Math.round(dispatcher.volume * 100);
 
                     if (volume < 100) {
 
+                        volume += 10;
                         dispatcher.setVolume(
                             Math.min(
-                                (dispatcher.volume * 50 + (2 * (m.content.split('+').length - 1))) / 50,
-                                2
+                                (volume / 100),
+                                1
                             )
                         );
 
@@ -384,16 +385,36 @@ const commands = {
 
                     sendMessage(msg, msgFormats.volume(volume));
                 } else if (m.content.startsWith(prefix + 'vol-')) {
-                    const volume = Math.round(dispatcher.volume * 50);
+                    let volume = Math.round(dispatcher.volume * 100);
 
                     if (volume > 0) {
 
+                        volume -= 10;
                         dispatcher.setVolume(
                             Math.max(
-                                (dispatcher.volume * 50 - (2 * (m.content.split('-').length - 1))) / 50,
+                                (volume / 100),
                                 0
                             )
                         );
+
+                    }
+
+                    sendMessage(msg, msgFormats.volume(volume));
+                } else if (m.content.startsWith(prefix + 'vol ')) {
+                    let volume = Math.round(dispatcher.volume * 100);
+                    const newVolume = parseInt(
+                        m.content.split(' ')[1] || volume
+                    );
+
+                    if (100 >= newVolume >= 0) {
+
+                        dispatcher.setVolume(
+                            Math.max(
+                                (newVolume / 100),
+                                0
+                            )
+                        );
+                        volume = newVolume;
 
                     }
 
@@ -629,13 +650,14 @@ const commands = {
             cmdPrefix + 'repeat : "Toggle repeat of current song"',
             cmdPrefix + 'repeatlast : "Toggle repeat of last song"',
             '',
-            'the following commands only function while the play command is running:'.toUpperCase(),
-            cmdPrefix + 'pause : "pauses the playing song"',
-            cmdPrefix + 'resume : "resumes last played song"',
-            cmdPrefix + 'skip : "skips the playing song"',
+            '[Only when play command is running]',
+            cmdPrefix + 'pause : "Pauses the playing song"',
+            cmdPrefix + 'resume : Rresumes last played song"',
+            cmdPrefix + 'skip : "Skips the playing song"',
             cmdPrefix + 'np : "Shows the playtime of current song."',
-            cmdPrefix + 'vol+(+++) : "increases volume by 2%/+"',
-            cmdPrefix + 'vol-(---) : "decreases volume by 2%/-"'
+            cmdPrefix + 'vol <0-100> : "Set volume"',
+            cmdPrefix + 'vol+ : "Increases volume by 10%"',
+            cmdPrefix + 'vol- : "Decreases volume by 10%"'
         ].join('\n');
     }
 };
