@@ -81,21 +81,6 @@ let msgFormats = {
         ),
     invalidVideoLink: (err) => wrap(
             'Invalid YouTube Link: ' + err
-        ),
-    downloadStarting: (url) => wrap(
-            `Starting download from ${url}`
-        ),
-    downloading: (title) => wrap(
-            `Downloading ${title}`
-        ),
-    downloadEnd: wrap(
-            'Download done'
-        ),
-    downloadComplete: wrap(
-            'Download complete'
-        ),
-    downloadError: wrap(
-            'Error on download'
         )
 };
 
@@ -241,42 +226,9 @@ const commands = {
         repeatLast = !repeatLast;
         sendMessage(msg, msgFormats.repeatLast(repeatLast));
     },
-    dl: (msg, cmdArgs) => {
 
-        const url = cmdArgs.split(' ')[0];
 
-        sendMessage(msg, msgFormats.downloadStarting(url), true).then(
-            (message) => {
 
-                yt.getInfo(url, (err, info) => {
-
-                    if (err) {
-                        editMessage(msg, msgFormats.downloadError, true);
-                        return;
-                    }
-
-                    editMessage(msg, msgFormats.downloading(info.title), true);
-
-                    let video = ytdl(url);
-
-                    video.pipe(
-                        fs.createWriteStream(
-                            info.title + '.mp4',
-                            {flags: 'a'}
-                        )
-                    );
-
-                    video.on('complete', (info) => {
-                        editMessage(msg, msgFormats.downloadComplete);
-                    });
-
-                    video.on('end', (info) => {
-                        editMessage(msg, msgFormats.downloadEnd);
-                    });
-                });
-            }
-        );
-    },
     play: (msg) => {
 
         const queueId = getQueueId(msg);
