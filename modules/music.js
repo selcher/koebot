@@ -6,9 +6,9 @@ const search = require('youtube-search');
 const fs = require('fs');
 const request = require('request');
 
+// Config
 const config = require('./../config.json');
 
-// Variables
 const botConfig = config.bot;
 const prefix = botConfig.prefix;
 
@@ -19,11 +19,12 @@ let repeat = musicConfig.repeat;
 let repeatLast = musicConfig.repeatLast;
 const msgDeleteDelay = musicConfig.msgDeleteDelay;
 
-let wrap = (content) => {
+// Message
+const wrap = (content) => {
     return '```' + content + '```';
 };
 
-let msgFormats = {
+const msgFormats = {
     autoPlay: (val) => wrap(
             `Play song on add: ${val}`
         ),
@@ -43,13 +44,14 @@ let msgFormats = {
             'Song queue is empty'
         ),
     addedSong: (song) => wrap(
-            `Added ${song.title} to the queue\n`
-        ) + song.thumbnail,
+            `Added:\n${song.title}\n` +
+            `Channel [${song.channelId}]`
+        ),
     alreadyPlaying: wrap(
             'Already Playing'
         ),
     playError: (delay) => (
-            `Oops, an error occured. Resuming in ${duration/1000}s...`
+            `Oops, an error occured. Resuming in ${duration / 1000}s...`
         ),
     playing: (song) => wrap(
             `Now Playing:\n${song.title}\nrequest by: @${song.requester}`
@@ -94,11 +96,10 @@ const sendMessage = (msg, content, dontDelete)  => {
                 !dontDelete && message.delete(msgDeleteDelay);
                 resolve(message);
             }
-            else {
-                resolve({
-                    "data": info,
-                    "message": msg
-                });
+        ).catch(
+            err => {
+                log(`Error sending msg: ${content}`);
+                reject(err);
             }
         );
     });
@@ -199,13 +200,6 @@ const searchVideoInfo = (keyword, msg) => {
         });
     });
 };
-const pmMessage = (user, content) => {
-    return new Promise((resolve, reject) => {
-        user.sendMessage(content).then(
-            () => resolve(content)
-        ).catch(
-            (err) => reject(err)
-        );
     });
 };
 
@@ -284,6 +278,7 @@ const commands = {
         };
 
         const streamSong = (song) => {
+            // TODO: add as option
             // getUser(msg, song.requesterId).then(
             //     (user) => pmMessage(user, msgFormats.playing(song))
             // );
@@ -339,7 +334,6 @@ const commands = {
 
                     sendMessage(msg, msgFormats.volume(volume));
                 } else if (m.content.startsWith(prefix + 'np')) {
-
                     const calcTime = (time) => {
                         let minutes = Math.floor(time / 60000);
                         let seconds = Math.floor((time % 60000) / 1000);
@@ -389,6 +383,7 @@ const commands = {
                 ).then(message => {
 
                     // Pause and resume later on error
+                    // TODO: limit re attempts
                     dispatcher.pause();
                     setTimeout(() => {
                         dispatcher.resume();
@@ -539,7 +534,7 @@ const commands = {
 
             sendMessage(
                 msg,
-                `__**${msg.guild.name}'s Music Queue:**__ **${tosend.length}** songs ${(tosend.length > 15 ? '*[Only next 15 shown]*' : '')}\n\`\`\`${tosend.slice(0,15).join('\n')}\`\`\``
+                `__**${msg.guild.name}'s Music Queue: **__ **${tosend.length}** songs ${(tosend.length > 15 ? '*[Only next 15 shown]*' : '')}\n\`\`\`${tosend.slice(0,15).join('\n')}\`\`\``
             );
         }
     },
