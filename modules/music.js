@@ -652,7 +652,7 @@ const commands = {
             '',
             '[Only when play command is running]',
             cmdPrefix + 'pause : "Pauses the playing song"',
-            cmdPrefix + 'resume : Rresumes last played song"',
+            cmdPrefix + 'resume : "Resumes last played song"',
             cmdPrefix + 'skip : "Skips the playing song"',
             cmdPrefix + 'np : "Shows the playtime of current song."',
             cmdPrefix + 'vol <0-100> : "Set volume"',
